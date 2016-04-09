@@ -135,9 +135,21 @@ def mineTreeII(inTree, headerTable, minSup, preFix, freqItemList, supportData, r
 def loadDataSet():
     return [[1, 3, 4], [2, 3, 5], [1, 2, 3, 5], [2, 5]]
 
+def loadTestDataFromFile(filename):
+    dataSet=[]
+    f=open(filename,'r')
+    re=f.readlines()
+    for i in re:
+        # print i
+        # print type(i)
+        i=i.strip('\n')
+        # print i.split(" ")
+        dataSet.append(i.split(" "))
+    return dataSet
+
 def loadTestData():
     dataSet=[]
-    f=open('testData.txt','r')
+    f=open('testDataSrcipII.txt','r')
     re=f.readlines()
     for i in re:
         # print i
@@ -182,45 +194,45 @@ def aprioriGen(Lk, k, Lset):  # cut the Lk
                     retList.append(Lk[i] | Lk[j])
     return retList
 
+def mine_assoc_rules(isets, min_support=0.5, min_confidence=0.5):
+    rules = []
+    visited = set()
+    for key in sorted(isets, key=lambda k: len(k), reverse=True):
+        support = isets[key]
+        if support < min_support or len(key) < 2:
+            continue
 
-def calcConf(freqSet, H, supportData, brl, minConf=0.7):
-    ''' 对候选规则集进行评估 '''
-    prunedH = []
-    for conseq in H:
-        conf = supportData[freqSet]*1.0 / supportData[freqSet - conseq]  # calculate the conf other conduct to conseq
-        if conf >= minConf:
-            # print freqSet - conseq, '-->', conseq, 'conf:', conf
-            brl.append((freqSet - conseq, conseq, conf))
-            prunedH.append(conseq)
-    return prunedH
+        for item in key:
+            left = key.difference([item])
+            right = frozenset([item])
+            _mine_assoc_rules(
+                left, right, support, visited, isets,
+                min_support, min_confidence, rules)
 
+    return rules
 
-def rulesFromConseq(Lset, freqSet, H, supportData, brl, minConf=0.7):
-    ''' 生成候选规则集 '''
-    m = len(H[0])  # m=1
-    # print 'm'
-    # print m
-    if (len(freqSet) > (m + 1)):
-        Hmpl = aprioriGen(H, m + 1, Lset)
-        Hmpl = calcConf(freqSet, Hmpl, supportData, brl, minConf)
-        if (len(Hmpl) > 1):
-            rulesFromConseq(Lset, freqSet, Hmpl, supportData, brl, minConf)
+def _mine_assoc_rules(left, right, rule_support, visited, isets, min_support,
+        min_confidence, rules):
+    if (left, right) in visited or len(left) < 1:
+        return
+    else:
+        visited.add((left, right))
 
+    support_a = isets[left]
+    confidence = float(rule_support) / float(support_a)
+    if confidence >= min_confidence:
+        rules.append((left, right, rule_support, confidence))
+        # We can try to increase right!
+        for item in left:
+            new_left = left.difference([item])
+            new_right = right.union([item])
+            _mine_assoc_rules(
+                new_left, new_right, rule_support, visited, isets,
+                min_support, min_confidence, rules)
 
-def generateRules(L, supportData, minConf=0.7):
-    """L :Frequent set type--list
-        supportData:each frequent entry's support value type--dict"""
-    bigRuleList = []
-    for i in range(0, len(L)):
-        eleLen = len(L[i])
-        if eleLen > 1:
-            H1 = [frozenset([item]) for item in L[i]]
-            freqSet = L[i]
-            if eleLen > 2:
-                rulesFromConseq(L, freqSet, H1, supportData, bigRuleList, minConf)
-            else:
-                calcConf(freqSet, H1, supportData, bigRuleList, minConf)
-    return bigRuleList
+def generateRules(supportData,minSupport=0.5,minConf=0.7):
+    rules=mine_assoc_rules(supportData,minSupport,minConf)
+    return rules
 
 def fpgrowthMain(data,minSupport=0.5,minConf=0.5):
     initSet = createInitSet(data)
@@ -231,13 +243,13 @@ def fpgrowthMain(data,minSupport=0.5,minConf=0.5):
     supportData = {}
     mineTreeII(myFPtree, myHeaderTab, minSupport, set([]), myFreqList, supportData, record_num)
 
-    rules = generateRules(myFreqList, supportData, minConf)
+    rules = generateRules(supportData,minSupport, minConf)
     return myFreqList,supportData,rules
 
 if __name__=='__main__':
     minSup = 0.5
-    simpDat = loadDataSet()
-    freqlist,supportData,rules=fpgrowthMain(simpDat,0.5,0.5)
+    simpDat = loadTestDataFromFile('testDataTcp.txt')
+    freqlist,supportData,rules=fpgrowthMain(simpDat,minSupport=0.01,minConf=0.2)
 
     print 'frequent list'
     print len(freqlist)

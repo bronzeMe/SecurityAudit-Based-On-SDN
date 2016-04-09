@@ -5,7 +5,7 @@
 from numpy import *
 def loadTestData():
     dataSet=[]
-    f=open('testData.txt','r')
+    f=open('testDataSrcipII.txt','r')
     re=f.readlines()
     for i in re:
         # print i
@@ -79,57 +79,72 @@ def apriori(dataSet, minSupport = 0.5):
         k += 1
     return L, supportData
 
-def generateRules(L, supportData, minConf=0.7):  #supportData is a dict coming from scanD
-    bigRuleList = []
-    for i in range(1, len(L)):#only get the sets with two or more items
-        for freqSet in L[i]:
-            H1 = [frozenset([item]) for item in freqSet]
-            if (i > 1):
-                rulesFromConseq(freqSet, H1, supportData, bigRuleList, minConf)
-            else:
-                calcConf(freqSet, H1, supportData, bigRuleList, minConf)
-    return bigRuleList         
+def mine_assoc_rules(isets, min_support=0.5, min_confidence=0.5):
+    rules = []
+    visited = set()
+    for key in sorted(isets, key=lambda k: len(k), reverse=True):
+        support = isets[key]
+        if support < min_support or len(key) < 2:
+            continue
 
-def calcConf(freqSet, H, supportData, brl, minConf=0.7):
-    prunedH = [] #create new list to return
-    for conseq in H:
-        conf = supportData[freqSet]/supportData[freqSet-conseq] #calc confidence
-        if conf >= minConf: 
-            # print freqSet-conseq,'-->',conseq,'conf:',conf
-            brl.append((freqSet-conseq, conseq, conf))
-            prunedH.append(conseq)
-    return prunedH
+        for item in key:
+            left = key.difference([item])
+            right = frozenset([item])
+            _mine_assoc_rules(
+                left, right, support, visited, isets,
+                min_support, min_confidence, rules)
 
-def rulesFromConseq(freqSet, H, supportData, brl, minConf=0.7):
-    m = len(H[0])
-    if (len(freqSet) > (m + 1)): #try further merging
-        Hmp1 = aprioriGen(H, m+1)#create Hm+1 new candidates
-        Hmp1 = calcConf(freqSet, Hmp1, supportData, brl, minConf)
-        if (len(Hmp1) > 1):    #need at least two sets to merge
-            rulesFromConseq(freqSet, Hmp1, supportData, brl, minConf)
+    return rules
+
+
+def _mine_assoc_rules(left, right, rule_support, visited, isets, min_support,
+        min_confidence, rules):
+    if (left, right) in visited or len(left) < 1:
+        return
+    else:
+        visited.add((left, right))
+
+    support_a = isets[left]
+    confidence = float(rule_support) / float(support_a)
+    if confidence >= min_confidence:
+        rules.append((left, right, rule_support, confidence))
+        # We can try to increase right!
+        for item in left:
+            new_left = left.difference([item])
+            new_right = right.union([item])
+            _mine_assoc_rules(
+                new_left, new_right, rule_support, visited, isets,
+                min_support, min_confidence, rules)
+
+def generateRules(L,supportData,minSupport=0.5,minConf=0.7):
+    isets={}
+    for i in range(len(L)):
+        for j in L[i]:
+            isets[j]=supportData[j]
+    rules=mine_assoc_rules(isets,min_support=minSupport,min_confidence=minConf)
+    return  rules
 
 def aprioriMain(data,minSupport=0.5,minConf=0.5):
     L,suppData=apriori(data,minSupport)
-    rules=generateRules(L,suppData,minConf)
+    rules=generateRules(L,suppData,minSupport,minConf)
 
     return L,suppData,rules
 
 if __name__=='__main__':
-    data=loadDataSet()
-    L,suppData,rules=aprioriMain(data,0.5,0.5)
+    data=loadTestData()
+    L,suppData,rules=aprioriMain(data,0.08,0.5)
 
     print 'frequent list'
     print len(L)
-    print L[0]
-    print L[1]
-    print L[2]
+    #
+    print L
 
     print 'supportData'
     for i in range(len(L)):
         for j in L[i]:
          print j," : ",suppData[j]
          # print
-
+    print 'rules'
     for item in rules:
         print item
     # L,suppData=apriori(data,minSupport=0.5)

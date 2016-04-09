@@ -1,7 +1,7 @@
 # coding=utf-8
 import MySQLdb
 import time
-
+from datetime import datetime
 
 
 def createConnection(host, user, passwd, db):
@@ -45,6 +45,8 @@ def preprocessData(data):
             if minitem == "" or minitem is None:  # filter empty field
                 pass
             else:
+                if type(minitem)==datetime:#datetime transform
+                    minitem=minitem.ctime()
                 tmplist.append(minitem)
         retlist.append(tmplist)
     return retlist
@@ -95,7 +97,7 @@ if __name__=='__main__':
     print '=' * 100
     for item in datalist:
         print item
-    datalistTime=preprocessTimeStampData(data)
-    print '-' * 100
-    for item in datalistTime:
-        print item
+    # datalistTime=preprocessTimeStampData(data)
+    # print '-' * 100
+    # for item in datalistTime:
+    #     print item
